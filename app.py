@@ -444,4 +444,3 @@ if "res_df" in st.session_state:
     else:
         filtered_df = res_df[res_df["Durum"].isin(selected_statuses)]
         st.dataframe(filtered_df, use_container_width=True)
-        
