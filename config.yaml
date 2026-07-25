@@ -1,0 +1,12 @@
+credentials:
+  usernames:
+    Bilal.turan21:
+      email: bilal@turan.com
+      name: Bilal Turan
+      password: $2y$12$R00t2J0g5T4v9d1X2Q3Z0.H8x7k6L5m4N3b2V1c0X9z8y7w6v5u4t
+cookie:
+  expiry_days: 30
+  key: random_signature_key
+  name: streamlit_auth_cookie
+preauthorized:
+  emails: []
