@@ -1,12 +1,10 @@
 credentials:
   usernames:
     Bilal.turan21:
-      email: bilal@turan.com
+      email: bilal@example.com
       name: Bilal Turan
-      password: $2y$12$R00t2J0g5T4v9d1X2Q3Z0.H8x7k6L5m4N3b2V1c0X9z8y7w6v5u4t
+      password: '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW'
 cookie:
   expiry_days: 30
   key: random_signature_key
-  name: streamlit_auth_cookie
-preauthorized:
-  emails: []
+  name: random_cookie_name
