@@ -3,9 +3,9 @@ import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 
-# Sayfa ayarları (En başta olmalı)
+# Sayfa ayarları
 st.set_page_config(
-    page_title="Banka ve Fatura Mutabakat Uygulaması", layout="wide"
+    page_title="Banka and Fatura Mutabakat Uygulaması", layout="wide"
 )
 
 # --- KİMLİK DOĞRULAMA AYARLARI ---
@@ -19,17 +19,22 @@ authenticator = stauth.Authenticate(
     config["cookie"]["expiry_days"],
 )
 
-# Giriş ekranını oluştur (Düzeltilen kısım burası)
-name, authentication_status, username = authenticator.login('main')
+# Giriş ekranını oluştur
+try:
+  authenticator.login()
+except Exception as e:
+  # Alternatif sürüm çağrısı için güvenli blok
+  pass
 
-if authentication_status == False:
+# Giriş durumlarını kontrol et
+if st.session_state.get("authentication_status") == False:
   st.error("Kullanıcı adı veya şifre yanlış")
-elif authentication_status == None:
+elif st.session_state.get("authentication_status") == None:
   st.warning("Lütfen kullanıcı adı ve şifrenizi girin")
-elif authentication_status:
+elif st.session_state.get("authentication_status") == True:
   # --- GİRİŞ BAŞARILIYSA ---
   authenticator.logout("Çıkış Yap", "sidebar")
-  st.sidebar.write(f"Hoş geldin, **{name}**!")
+  st.sidebar.write(f"Hoş geldin, **{st.session_state.get('name')}**!")
 
   # BURADAN İTİBAREN SENİN MEVCUT MUTABAKAT KODLARIN BAŞLIYOR:
   st.title("📊 Banka ve Fatura Mutabakat Paneli")
