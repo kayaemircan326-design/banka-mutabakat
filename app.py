@@ -1,41 +1,35 @@
 import streamlit as st
-import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 
 # Sayfa ayarları
 st.set_page_config(
-    page_title="Banka and Fatura Mutabakat Uygulaması", layout="wide"
+    page_title="Banka ve Fatura Mutabakat Uygulaması", layout="wide"
 )
 
-# --- KİMLİK DOĞRULAMA AYARLARI ---
-with open("config.yaml") as file:
-  config = yaml.load(file, Loader=SafeLoader)
+# Basit kullanıcı kontrolü (Hash hatası vermez)
+st.title("📊 Banka ve Fatura Mutabakat Paneli")
 
-authenticator = stauth.Authenticate(
-    config["credentials"],
-    config["cookie"]["name"],
-    config["cookie"]["key"],
-    config["cookie"]["expiry_days"],
-)
+# Oturum durumunu başlat
+if "logged_in" not in st.session_state:
+  st.session_state["logged_in"] = False
 
-# Giriş ekranını oluştur
-try:
-  authenticator.login()
-except Exception as e:
-  # Alternatif sürüm çağrısı için güvenli blok
-  pass
+if not st.session_state["logged_in"]:
+  st.subheader("Lütfen Giriş Yapın")
+  username = st.text_input("Kullanıcı Adı")
+  password = st.text_input("Şifre", type="password")
 
-# Giriş durumlarını kontrol et
-if st.session_state.get("authentication_status") == False:
-  st.error("Kullanıcı adı veya şifre yanlış")
-elif st.session_state.get("authentication_status") == None:
-  st.warning("Lütfen kullanıcı adı ve şifrenizi girin")
-elif st.session_state.get("authentication_status") == True:
-  # --- GİRİŞ BAŞARILIYSA ---
-  authenticator.logout("Çıkış Yap", "sidebar")
-  st.sidebar.write(f"Hoş geldin, **{st.session_state.get('name')}**!")
+  if st.button("Giriş Yap"):
+    if username == "Bilal.turan21" and password == "ervayıçokseviyorum":
+      st.session_state["logged_in"] = True
+      st.rerun()
+    else:
+      st.error("Kullanıcı adı veya şifre yanlış!")
+else:
+  st.sidebar.success("Giriş Başarılı!")
+  if st.sidebar.button("Çıkış Yap"):
+    st.session_state["logged_in"] = False
+    st.rerun()
 
-  # BURADAN İTİBAREN SENİN MEVCUT MUTABAKAT KODLARIN BAŞLIYOR:
-  st.title("📊 Banka ve Fatura Mutabakat Paneli")
-  st.info("Sistem başarıyla açıldı!")
+  # --- BURADAN İTİBAREN ASIL UYGULAMAN BAŞLIYOR ---
+  st.write("Hoş geldin Bilal! Sistem başarıyla açıldı.")
