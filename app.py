@@ -8,7 +8,7 @@ st.set_page_config(
     page_title="Banka ve Fatura Mutabakat Uygulaması", layout="wide"
 )
 
-# --- KİMLİK DOĞRULAMA (AUTHEBTICATION) AYARLARI ---
+# --- KİMLİK DOĞRULAMA AYARLARI ---
 with open("config.yaml") as file:
   config = yaml.load(file, Loader=SafeLoader)
 
@@ -19,25 +19,18 @@ authenticator = stauth.Authenticate(
     config["cookie"]["expiry_days"],
 )
 
-# Giriş ekranını oluştur
-name, authentication_status, username = authenticator.login("Giriş Yap", "main")
+# Giriş ekranını oluştur (Düzeltilen kısım burası)
+name, authentication_status, username = authenticator.login('main')
 
 if authentication_status == False:
   st.error("Kullanıcı adı veya şifre yanlış")
 elif authentication_status == None:
   st.warning("Lütfen kullanıcı adı ve şifrenizi girin")
 elif authentication_status:
-  # --- GİRİŞ BAŞARILIYSA ÇALIŞACAK UYGULAMA KODLARI ---
+  # --- GİRİŞ BAŞARILIYSA ---
   authenticator.logout("Çıkış Yap", "sidebar")
-  st.sidebar.write(肃, f"Hoş geldin, **{name}**!")
+  st.sidebar.write(f"Hoş geldin, **{name}**!")
 
-  # BURADan İTİBAREN SENİN MEVCUT MUTABAKAT KODLARIN BAŞLIYOR:
+  # BURADAN İTİBAREN SENİN MEVCUT MUTABAKAT KODLARIN BAŞLIYOR:
   st.title("📊 Banka ve Fatura Mutabakat Paneli")
-
-  # Örnek olarak kendi mevcut kodlarını buraya ekleyebilirsin:
-  st.info(
-      "Sistem başarıyla açıldı! Sol menüden ayarları yapıp dosyalarınızı"
-      " yükleyebilirsiniz."
-  )
-
-  # (Kendi yazdığın mutabakat arayüzü ve kod blokları buranın altına gelecek)
+  st.info("Sistem başarıyla açıldı!")
