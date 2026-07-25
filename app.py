@@ -67,6 +67,7 @@ if not st.session_state["logged_in"]:
                     st.error("Hatalı kullanıcı adı veya şifre!")
     st.stop()  # Giriş yapılmadıysa uygulamanın geri kalanını durdur
 
+
 # --- GÖZ YORMAYAN ÖZEL TEMA VE SAĞ ALT İMZA (CUSTOM CSS) ---
 st.markdown(
     """
@@ -134,7 +135,7 @@ st.caption("Ayrıntılı hata ve şüphe nedenleri içeren otomatik mutabakat si
 
 st.markdown("---")
 
-# --- SIDEBAR (PARAMETRELER VE ÇIKIŞ) ---
+# --- SIDEBAR (PARAMETRELER) ---
 st.sidebar.header("⚙️ Eşleştirme Parametreleri")
 
 fuzzy_threshold = st.sidebar.slider(
