@@ -1,10 +1,7 @@
 credentials:
-  usernames:
-    Bilal.turan21:
-      email: bilal@example.com
-      name: Bilal Turan
-      password: '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW'
-cookie:
-  expiry_days: 30
-  key: random_signature_key
-  name: random_cookie_name
+    usernames:
+        Bilal.turan21:
+            email: bilal@example.com
+            name: Bilal Turan
+            password: $2b$12$K8x5X5X5X5X5X5X5X5X5Xu... (bunu sil, aşağıdakini yapıştır)
+            
