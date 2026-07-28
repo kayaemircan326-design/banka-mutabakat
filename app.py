@@ -1,447 +1,385 @@
+import io
 import pandas as pd
 from rapidfuzz import fuzz
 import streamlit as st
 
+# --- SAYFA YAPILANDIRMASI ---
 st.set_page_config(
-    page_title="Banka & Fatura Mutabakat Toolu", layout="wide", page_icon="📊"
+    page_title="Banka & Fatura Mutabakat Sistemi",
+    page_icon="⚖️",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-# --- 1. OTURUM YÖNETİMİ (GİRİŞ KONTROLÜ) ---
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+# --- KULLANICI GİRİŞ (AUTH) KONTROLÜ ---
+if "authenticated" not in st.session_state:
+  st.session_state["authenticated"] = False
 
-# Giriş yapılmadıysa giriş ekranını göster
-if not st.session_state["logged_in"]:
-    st.markdown(
-        """
-        <style>
-        .stApp {
-            background-color: #0E1117;
-            color: #E0E0E0;
-        }
-        div.stButton > button:first-child {
-            background-color: #238636;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 0.5rem 1rem;
-            font-weight: 600;
-            width: 100%;
-        }
-        div.stButton > button:first-child:hover {
-            background-color: #2EA043;
-            border: none;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+
+def check_credentials():
+  username = st.session_state.get("username_input", "")
+  password = st.session_state.get("password_input", "")
+  if username == "Bilal.turan21" and password == "ervayıçokseviyorum":
+    st.session_state["authenticated"] = True
+  else:
+    st.session_state["login_error"] = True
+
+
+if not st.session_state["authenticated"]:
+  col1, col2, col3 = st.columns([1, 1.5, 1])
+  with col2:
+    st.markdown("### 🔐 Özel Giriş Paneli")
+    st.text_input("Kullanıcı Adı", key="username_input")
+    st.text_input("Şifre", type="password", key="password_input")
+    st.button(
+        "Giriş Yap", on_click=check_credentials, use_container_width=True
     )
 
-    st.markdown(
-        "<h2 style='text-align: center; color: #58A6FF;'>🔐 Giriş Paneli</h2>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<p style='text-align: center; color: #8B949E;'>Devam etmek için lütfen giriş yapın.</p>",
-        unsafe_allow_html=True,
-    )
+    if st.session_state.get("login_error", False):
+      st.error("Hatalı kullanıcı adı veya şifre!")
+  st.stop()
 
-    col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-    with col_l2:
-        with st.form("login_form"):
-            username = st.text_input("Kullanıcı Adı")
-            password = st.text_input("Şifre", type="password")
-            submit_button = st.form_submit_button(
-                "Giriş Yap", use_container_width=True
-            )
+# --- SIDEBAR PARAMETRELERİ ---
+st.sidebar.header("⚙️ Mutabakat Ayarları")
 
-            if submit_button:
-                if (
-                    username == "Bilal.turan21"
-                    and password == "ervayıçokseviyorum"
-                ):
-                    st.session_state["logged_in"] = True
-                    st.success("Giriş başarılı! Yönlendiriliyorsunuz...")
-                    st.rerun()
-                else:
-                    st.error("Hatalı kullanıcı adı veya şifre!")
-    st.stop()  # Giriş yapılmadıysa uygulamanın geri kalanını durdur
+fuzzy_threshold = st.sidebar.slider(
+    "Fuzzy Eşleşme Eşiği (%)", min_value=50, max_value=100, value=85, step=1
+)
 
+st.sidebar.subheader("Damga Vergisi Filtresi (%)")
+damga_vergisi_araligi = st.sidebar.slider(
+    "Oran Aralığı Seçin",
+    min_value=0.70,
+    max_value=1.00,
+    value=(0.70, 1.00),
+    step=0.01,
+    format="%.2f",
+)
+min_damga, max_damga = damga_vergisi_araligi
 
-# --- GÖZ YORMAYAN ÖZEL TEMA VE SAĞ ALT İMZA (CUSTOM CSS) ---
-st.markdown(
+tolerans_tutar = st.sidebar.number_input(
+    "Tutar Tolerans Payı (TL)",
+    min_value=0.0,
+    max_value=2000.0,
+    value=1.0,
+    step=10.0,
+)
+
+st.sidebar.divider()
+st.sidebar.info("Lütfen Banka ve Fatura dosyalarınızı yükleyin.")
+
+# --- SAĞ ALT İMZA ---
+st.sidebar.markdown(
     """
     <style>
-    /* Genel Arka Plan ve Yazı Rengi (Soft Dark Theme) */
-    .stApp {
-        background-color: #0E1117;
-        color: #E0E0E0;
-    }
-    
-    /* Yan Menü (Sidebar) Arka Planı */
-    section[data-testid="stSidebar"] {
-        background-color: #161B22;
-        border-right: 1px solid #30363D;
-    }
-    
-    /* Metin Kutuları ve Kart Tasarımları */
-    div[data-testid="stMetricValue"] {
-        color: #58A6FF !important;
-    }
-    
-    /* Buton Tasarımı */
-    div.stButton > button:first-child {
-        background-color: #238636;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 0.5rem 1rem;
-        font-weight: 600;
-        width: 100%;
-    }
-    div.stButton > button:first-child:hover {
-        background-color: #2EA043;
-        border: none;
-    }
-
-    /* Sağ Alt Köşe BilalTuran İmzası */
-    .footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: transparent;
-        color: #8B949E;
-        text-align: right;
-        padding-right: 25px;
-        padding-bottom: 12px;
-        font-size: 13px;
-        font-weight: 600;
-        pointer-events: none;
-        z-index: 100;
-        letter-spacing: 0.5px;
-    }
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            right: 20px;
+            font-size: 12px;
+            color: #888888;
+            background-color: rgba(0,0,0,0.05);
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 99999;
+        }
     </style>
-    <div class="footer">
-        BilalTuran
-    </div>
+    <div class="footer">Geliştiren: Bilal Turan</div>
     """,
     unsafe_allow_html=True,
 )
 
-# --- BAŞLIK BÖLÜMÜ ---
-st.title("📊 Akıllı Banka Ekstresi & Fatura Mutabakat Raporu")
-st.caption("Ayrıntılı hata ve şüphe nedenleri içeren otomatik mutabakat sistemi")
-
-st.markdown("---")
-
-# --- SIDEBAR (PARAMETRELER) ---
-st.sidebar.header("⚙️ Eşleştirme Parametreleri")
-
-fuzzy_threshold = st.sidebar.slider(
-    "İsim Benzerlik Eşiği (%)", min_value=30, max_value=100, value=60, step=5
+# --- ANA EKRAN & DOSYA YÜKLEME ---
+st.title("⚖️ Banka - Fatura Mutabakat Sistemi")
+st.write(
+    "Banka hareketleri ile faturalarınızı otomatik eşleştirin, karşılıksız"
+    " ödemeleri ve eksik kayıtları yönetin."
 )
 
-st.sidebar.subheader("📐 Damga Vergisi Aralığı (%)")
-min_damga_pct = st.sidebar.number_input(
-    "Min. Damga Vergisi (%)",
-    min_value=0.0,
-    max_value=5.0,
-    value=0.70,
-    step=0.05,
-    format="%.2f",
-)
-max_damga_pct = st.sidebar.number_input(
-    "Maks. Damga Vergisi (%)",
-    min_value=0.0,
-    max_value=5.0,
-    value=1.00,
-    step=0.05,
-    format="%.2f",
-)
+col_b, col_f = st.columns(2)
 
-tolerance_amount = st.sidebar.number_input(
-    "Maksimum Tolerans Tutarı (TL)", min_value=0.0, value=500.0, step=50.0
-)
+with col_b:
+  st.subheader("1. Banka Ekstresi Yükle")
+  banka_file = st.file_uploader(
+      "Banka Dosyası (Excel / CSV)", type=["xlsx", "csv"], key="banka"
+  )
 
-st.sidebar.markdown("---")
-if st.sidebar.button("🚪 Çıkış Yap", use_container_width=True):
-    st.session_state["logged_in"] = False
-    st.rerun()
+with col_f:
+  st.subheader("2. Fatura Listesi Yükle")
+  fatura_file = st.file_uploader(
+      "Fatura Dosyası (Excel / CSV)", type=["xlsx", "csv"], key="fatura"
+  )
 
-# --- DOSYA YÜKLEME ---
-col1, col2 = st.columns(2)
-
-with col1:
-    bank_file = st.file_uploader(
-        "🏦 Banka Ekstresi Yükle", type=["xlsx", "xls", "csv"]
-    )
-
-with col2:
-    invoice_file = st.file_uploader(
-        "📄 Fatura Listesi Yükle", type=["xlsx", "xls", "csv"]
-    )
-
-
-def load_data(file):
-    if file is None:
-        return None
-    if file.name.endswith(".csv"):
-        return pd.read_csv(file)
+# --- MUTABAKAT MOTORU ---
+if banka_file and fatura_file:
+  try:
+    if banka_file.name.endswith(".csv"):
+      df_banka = pd.read_csv(banka_file)
     else:
-        return pd.read_excel(file)
+      df_banka = pd.read_excel(banka_file)
 
+    if fatura_file.name.endswith(".csv"):
+      df_fatura = pd.read_csv(fatura_file)
+    else:
+      df_fatura = pd.read_excel(fatura_file)
 
-def find_column(cols, keywords, default_idx=0):
-    for col in cols:
-        col_str = str(col).lower()
-        if any(kw in col_str for kw in keywords):
-            return col
-    return cols[default_idx] if cols else None
+    # Sütun isimlerindeki boşlukları temizle
+    df_banka.columns = [str(c).strip() for c in df_banka.columns]
+    df_fatura.columns = [str(c).strip() for c in df_fatura.columns]
 
+    st.success("Dosyalar başarıyla yüklendi! Lütfen sütunları seçin:")
 
-df_bank = load_data(bank_file)
-df_inv = load_data(invoice_file)
+    col_s1, col_s2 = st.columns(2)
 
-if df_bank is not None and df_inv is not None:
-    st.success("Her iki dosya da başarıyla yüklendi!")
+    fatura_kolonlar = list(df_fatura.columns)
+    banka_kolonlar = list(df_banka.columns)
 
-    bank_cols = df_bank.columns.tolist()
-    inv_cols = df_inv.columns.tolist()
+    with col_s1:
+      st.markdown("#### 📄 Fatura Sütunları")
+      f_tarih_col = st.selectbox(
+          "Tarih Sütunu (Fatura)", fatura_kolonlar, key="f_tarih"
+      )
+      f_cari_col = st.selectbox(
+          "Cari Sütunu (Fatura)", fatura_kolonlar, key="f_cari"
+      )
+      f_kurum_col = st.selectbox(
+          "Kurum Adı Sütunu (Fatura)", fatura_kolonlar, key="f_kurum"
+      )
+      f_tutar_col = st.selectbox(
+          "Tutar Sütunu (Fatura)", fatura_kolonlar, key="f_tutar"
+      )
+      f_aciklama_col = st.selectbox(
+          "Açıklama Sütunu (Fatura)", fatura_kolonlar, key="f_aciklama"
+      )
 
-    col_b_desc = find_column(
-        bank_cols,
-        [
-            "açıklama",
-            "aciklama",
-            "dekont",
-            "detay",
-            "narration",
-            "description",
-        ],
-    )
-    col_b_amt = find_column(bank_cols, ["tutar", "miktar", "amount", "bakiye"])
+    with col_s2:
+      st.markdown("#### 🏦 Banka Sütunları (Manuel Eşleşme İçin)")
+      b_tarih_col = st.selectbox(
+          "Tarih Sütunu (Banka)", banka_kolonlar, key="b_tarih"
+      )
+      b_cari_col = st.selectbox(
+          "Cari Sütunu (Banka)", banka_kolonlar, key="b_cari"
+      )
+      b_kurum_col = st.selectbox(
+          "Kurum / Gönderen Adı Sütunu (Banka)", banka_kolonlar, key="b_kurum"
+      )
+      b_tutar_col = st.selectbox(
+          "Tutar Sütunu (Banka)", banka_kolonlar, key="b_tutar"
+      )
+      b_aciklama_col = st.selectbox(
+          "Açıklama Sütunu (Banka)", banka_kolonlar, key="b_aciklama"
+      )
 
-    col_i_vendor = find_column(
-        inv_cols,
-        [
-            "firma",
-            "cari",
-            "müşteri",
-            "musteri",
-            "unvan",
-            "ünvan",
-            "vendor",
-            "party",
-        ],
-    )
-    col_i_amt = find_column(
-        inv_cols, ["tutar", "genel toplam", "toplam", "amount"]
-    )
-    col_i_no = find_column(
-        inv_cols, ["fatura no", "faturano", "fatura_no", "belge no", "no", "invoice"]
-    )
+    if st.button("🚀 Mutabakatı Başlat", use_container_width=True):
+      with st.spinner("Eşleştirmeler yapılıyor..."):
 
-    if st.button("🚀 Mutabakatı Çalıştır ve Raporla"):
-        results = []
-        inv_df_work = df_inv.copy()
-        inv_df_work["matched"] = False
+        sonuc_listesi = []
+        karsiliksiz_listesi = []
+        eslesen_banka_indeksleri = set()
 
-        for b_idx, b_row in df_bank.iterrows():
-            b_desc = (
-                str(b_row[col_b_desc])
-                if col_b_desc and pd.notnull(b_row[col_b_desc])
-                else ""
+        for idx, fatura in df_fatura.iterrows():
+          f_kurum_raw = fatura[f_kurum_col]
+          if pd.isna(f_kurum_raw):
+            continue
+          f_kurum = str(f_kurum_raw).strip()
+          if not f_kurum or f_kurum.lower() == "nan":
+            continue
+
+          f_tarih = fatura.get(f_tarih_col, "-")
+          f_cari = fatura.get(f_cari_col, "-")
+          f_ack = fatura.get(f_aciklama_col, "-")
+
+          try:
+            f_tutar = float(
+                str(fatura[f_tutar_col]).replace(",", "").strip()
             )
+          except:
+            f_tutar = 0.0
+
+          eslesti_mi = False
+          en_iyi_eslesen_banka = None
+          durum = ""
+          aciklama = ""
+
+          for b_idx, banka in df_banka.iterrows():
+            if b_idx in eslesen_banka_indeksleri:
+              continue
+
+            b_kurum_raw = banka[b_kurum_col]
+            if pd.isna(b_kurum_raw):
+              continue
+            b_kurum = str(b_kurum_raw).strip()
+            if not b_kurum or b_kurum.lower() == "nan":
+              continue
+
+            b_tarih = banka.get(b_tarih_col, "-")
+            b_cari = banka.get(b_cari_col, "-")
+            b_ack = banka.get(b_aciklama_col, "-")
+
             try:
-                b_amt = abs(float(b_row[col_b_amt]))
+              b_tutar = float(str(banka[b_tutar_col]).replace(",", "").strip())
             except:
-                b_amt = 0.0
+              b_tutar = 0.0
 
-            matched_row = None
-            status = "Eşleşmedi ❌"
-            reason = "Banka tutarına veya açıklamasına uygun hiçbir fatura bulunamadı (Fatura no, isim benzerliği ve tutar eşleşmesi sağlanamadı)."
-            match_type = "-"
+            benzerlik = fuzz.ratio(f_kurum.lower(), b_kurum.lower())
 
-            # 1. AŞAMA: Fatura No Birebir Geçiyor mu?
-            if col_i_no:
-                for i_idx, i_row in inv_df_work[
-                    ~inv_df_work["matched"]
-                ].iterrows():
-                    i_no = str(i_row[col_i_no]).strip()
-                    if i_no and len(i_no) > 3 and i_no.lower() in b_desc.lower():
-                        matched_row = i_row
-                        status = "Eşleşti ✅"
-                        reason = "Fatura No banka açıklamasında birebir bulundu."
-                        match_type = "Fatura No"
-                        inv_df_work.at[i_idx, "matched"] = True
-                        break
+            beklenen_min_tutar = f_tutar * (1.00 - max_damga) - tolerans_tutar
+            beklenen_max_tutar = f_tutar * (1.00 - min_damga) + tolerans_tutar
 
-            # 2. AŞAMA: İsim + Tutar (Aralıklı Damga Vergisi Kontrolü)
-            if matched_row is None and col_i_vendor and col_i_amt:
-                for i_idx, i_row in inv_df_work[
-                    ~inv_df_work["matched"]
-                ].iterrows():
-                    i_vendor = (
-                        str(i_row[col_i_vendor])
-                        if pd.notnull(i_row[col_i_vendor])
-                        else ""
-                    )
-                    try:
-                        i_amt = abs(float(i_row[col_i_amt]))
-                    except:
-                        i_amt = 0.0
-
-                    amt_diff = abs(b_amt - i_amt)
-                    amt_diff_pct = (
-                        (amt_diff / i_amt * 100) if i_amt > 0 else 999
-                    )
-                    score = fuzz.partial_ratio(
-                        i_vendor.lower(), b_desc.lower()
-                    )
-
-                    if score >= fuzzy_threshold:
-                        if amt_diff == 0:
-                            matched_row = i_row
-                            status = "Eşleşti ✅"
-                            reason = f"Firma adı benzerliği sağlandı (Skor: {score}), tutarlar kuruşu kuruşuna tutuyor."
-                            match_type = "İsim + Tam Tutar"
-                            inv_df_work.at[i_idx, "matched"] = True
-                            break
-                        elif (
-                            min_damga_pct <= amt_diff_pct <= max_damga_pct
-                            and amt_diff <= tolerance_amount
-                        ):
-                            matched_row = i_row
-                            status = "Eşleşti ✅"
-                            reason = f"Firma adı benzerliği sağlandı (Skor: {score}), tutar farkı (%{amt_diff_pct:.2f}) belirlenen damga vergisi aralığında."
-                            match_type = "İsim + Damga Vergisi Aralığı"
-                            inv_df_work.at[i_idx, "matched"] = True
-                            break
-                        elif (min_damga_pct - 0.3) <= amt_diff_pct <= (
-                            max_damga_pct + 0.3
-                        ) and amt_diff <= tolerance_amount:
-                            matched_row = i_row
-                            status = "Şüpheli / Kontrol Edilecek ⚠️"
-                            reason = f"Firma adı uyuşuyor fakat kesinti oranı (%{amt_diff_pct:.2f}) hedef damga vergisi aralığının (%{min_damga_pct:.2f} - %{max_damga_pct:.2f}) sınırında/yakınında."
-                            match_type = "İsim + Yakın Kesinti"
-                            inv_df_work.at[i_idx, "matched"] = True
-                            break
-                        else:
-                            status = "Şüpheli / Kontrol Edilecek ⚠️"
-                            reason = f"Firma adı eşleşti (Skor: {score}) ancak tutar farkı ({amt_diff:,.2f} TL / %{amt_diff_pct:.2f}) tolerans ve damga vergisi sınırlarını aşıyor."
-
-            # 3. AŞAMA: Sadece Tutar (Açıklamada Firma İsmi Yoksa)
-            if matched_row is None and col_i_amt:
-                for i_idx, i_row in inv_df_work[
-                    ~inv_df_work["matched"]
-                ].iterrows():
-                    try:
-                        i_amt = abs(float(i_row[col_i_amt]))
-                    except:
-                        i_amt = 0.0
-
-                    amt_diff = abs(b_amt - i_amt)
-                    amt_diff_pct = (
-                        (amt_diff / i_amt * 100) if i_amt > 0 else 999
-                    )
-
-                    if (
-                        amt_diff == 0
-                        or (min_damga_pct <= amt_diff_pct <= max_damga_pct)
-                    ) and amt_diff <= tolerance_amount:
-                        matched_row = i_row
-                        status = "Şüpheli / Kontrol Edilecek ⚠️"
-                        reason = f"Tutar ve kesinti oranı (%{amt_diff_pct:.2f}) uyumlu fakat banka açıklamasında firma adına ait yeterli benzerlik bulunamadı."
-                        match_type = "Yalnızca Tutar"
-                        inv_df_work.at[i_idx, "matched"] = True
-                        break
-
-            # Sonuçları Kaydet
-            if matched_row is not None:
-                i_amt_val = abs(float(matched_row[col_i_amt]))
-                diff_val = round(abs(b_amt - i_amt_val), 2)
-                vendor_val = (
-                    matched_row[col_i_vendor] if col_i_vendor else "-"
-                )
-                no_val = matched_row[col_i_no] if col_i_no else "-"
-
-                results.append({
-                    "Durum": status,
-                    "Şüphe / Açıklama Sebebi": reason,
-                    "Banka Açıklama": b_desc,
-                    "Banka Tutar (TL)": f"{b_amt:,.2f}",
-                    "Eşleşen Firma": vendor_val,
-                    "Eşleşen Fatura No": no_val,
-                    "Fatura Tutar (TL)": f"{i_amt_val:,.2f}",
-                    "Fark (TL)": f"{diff_val:,.2f}",
-                    "Eşleşme Mantığı": match_type,
-                })
-            else:
-                results.append({
-                    "Durum": status,
-                    "Şüphe / Açıklama Sebebi": reason,
-                    "Banka Açıklama": b_desc,
-                    "Banka Tutar (TL)": f"{b_amt:,.2f}",
-                    "Eşleşen Firma": "-",
-                    "Eşleşen Fatura No": "-",
-                    "Fatura Tutar (TL)": "-",
-                    "Fark (TL)": "-",
-                    "Eşleşme Mantığı": "-",
-                })
-
-        st.session_state["res_df"] = pd.DataFrame(results)
-
-# --- SONUÇLARI GÖSTERME VE FİLTRELEME ALANI ---
-if "res_df" in st.session_state:
-    res_df = st.session_state["res_df"]
-
-    st.markdown("---")
-    st.subheader("🎯 Mutabakat Özet Raporu")
-
-    cnt_success = len(res_df[res_df["Durum"] == "Eşleşti ✅"])
-    cnt_warning = len(
-        res_df[res_df["Durum"] == "Şüpheli / Kontrol Edilecek ⚠️"]
-    )
-    cnt_fail = len(res_df[res_df["Durum"] == "Eşleşmedi ❌"])
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Kesin Eşleşen", cnt_success)
-    m2.metric("Şüpheli / Kontrol Edilecek", cnt_warning)
-    m3.metric("Eşleşmeyen", cnt_fail)
-
-    st.markdown("---")
-    st.subheader("📋 Detaylı Mutabakat Listesi")
-
-    # Güvenli Filtreleme Formu
-    with st.form("filter_form"):
-        f_col1, f_col2 = st.columns([3, 1])
-
-        with f_col1:
-            selected_statuses = st.multiselect(
-                "Listelenecek Durumları Seçin:",
-                [
-                    "Eşleşti ✅",
-                    "Şüpheli / Kontrol Edilecek ⚠️",
-                    "Eşleşmedi ❌",
-                ],
-                default=[
-                    "Eşleşti ✅",
-                    "Şüpheli / Kontrol Edilecek ⚠️",
-                    "Eşleşmedi ❌",
-                ],
+            tutar_uyuyor_mu = (b_tutar >= f_tutar - tolerans_tutar) or (
+                beklenen_min_tutar <= b_tutar <= beklenen_max_tutar
             )
 
-        with f_col2:
-            st.write(" ")
-            st.write(" ")
-            apply_filter = st.form_submit_button("🔍 Filtreyi Uygula")
+            if benzerlik >= fuzzy_threshold and tutar_uyuyor_mu:
+              eslesti_mi = True
+              eslesen_banka_indeksleri.add(b_idx)
+              durum = "Eşleşti (Mutabık)"
+              aciklama = "İsim ve damga vergili tutar tam uyumlu."
+              en_iyi_eslesen_banka = (b_tarih, b_cari, b_kurum, b_tutar, b_ack)
+              break
+            elif benzerlik >= fuzzy_threshold and not tutar_uyuyor_mu:
+              eslesti_mi = True
+              eslesen_banka_indeksleri.add(b_idx)
+              durum = "Şüpheli Eşleşme"
+              aciklama = (
+                  f"İsim uyumlu (%{benzerlik}), ancak tutar uyuşmuyor. Fatura:"
+                  f" {f_tutar} TL, Banka: {b_tutar} TL."
+              )
+              en_iyi_eslesen_banka = (b_tarih, b_cari, b_kurum, b_tutar, b_ack)
+              break
+            elif benzerlik < fuzzy_threshold and tutar_uyuyor_mu:
+              eslesti_mi = True
+              eslesen_banka_indeksleri.add(b_idx)
+              durum = "Şüpheli Eşleşme"
+              aciklama = (
+                  f"Tutar uyumlu, ancak kurum adı benzerliği düşük (%{benzerlik})."
+              )
+              en_iyi_eslesen_banka = (b_tarih, b_cari, b_kurum, b_tutar, b_ack)
+              break
 
-    # Filtre Kontrolü
-    if not selected_statuses:
-        st.warning(
-            "⚠️ Lütfen tablonun görünebilmesi için en az bir durum seçin ve 'Filtreyi Uygula' butonuna basın."
+          if eslesti_mi:
+            sonuc_listesi.append({
+                "Durum": durum,
+                "Fatura Tarihi": f_tarih,
+                "Fatura Cari": f_cari,
+                "Fatura Kurum": f_kurum,
+                "Fatura Tutarı": f_tutar,
+                "Fatura Açıklama": f_ack,
+                "Banka Tarihi": (
+                    en_iyi_eslesen_banka[0] if en_iyi_eslesen_banka else "-"
+                ),
+                "Banka Cari": (
+                    en_iyi_eslesen_banka[1] if en_iyi_eslesen_banka else "-"
+                ),
+                "Banka Kurum": (
+                    en_iyi_eslesen_banka[2] if en_iyi_eslesen_banka else "-"
+                ),
+                "Banka Tutarı": (
+                    en_iyi_eslesen_banka[3] if en_iyi_eslesen_banka else 0.0
+                ),
+                "Banka Açıklama": (
+                    en_iyi_eslesen_banka[4] if en_iyi_eslesen_banka else "-"
+                ),
+                "Eşleşme Durumu / Sebep": aciklama,
+            })
+          else:
+            karsiliksiz_listesi.append({
+                "Durum": "Eşleşmeyen (Bankada Karşılığı Yok)",
+                "Fatura Tarihi": f_tarih,
+                "Fatura Cari": f_cari,
+                "Fatura Kurum": f_kurum,
+                "Fatura Tutarı": f_tutar,
+                "Fatura Açıklama": f_ack,
+                "Açıklama": "Bankada karşılığı / eşleşen ödemesi bulunamadı.",
+            })
+
+        sonuc_df = pd.DataFrame(sonuc_listesi)
+        karsiliksiz_df = pd.DataFrame(karsiliksiz_listesi)
+
+        # --- FİLTRELEME VE GÖSTERİM ---
+        st.divider()
+        st.subheader("📊 Mutabakat Raporu & Filtreleme")
+
+        tum_kayitlar_listesi = []
+        if not sonuc_df.empty:
+          tum_kayitlar_listesi.append(sonuc_df)
+        if not karsiliksiz_df.empty:
+          k_temp = karsiliksiz_df.copy()
+          k_temp["Banka Tarihi"] = "-"
+          k_temp["Banka Cari"] = "-"
+          k_temp["Banka Kurum"] = "-"
+          k_temp["Banka Tutarı"] = 0.0
+          k_temp["Banka Açıklama"] = "-"
+          k_temp["Eşleşme Durumu / Sebep"] = k_temp["Açıklama"]
+          tum_kayitlar_listesi.append(k_temp)
+
+        if tum_kayitlar_listesi:
+          master_df = pd.concat(tum_kayitlar_listesi, ignore_index=True)
+
+          secilen_durumlar = st.multiselect(
+              "🔍 Duruma Göre Filtrele (İstediğiniz kategoriyi seçin veya"
+              " tümünü bırakın):",
+              options=master_df["Durum"].unique().tolist(),
+              default=master_df["Durum"].unique().tolist(),
+          )
+
+          filtered_df = master_df[master_df["Durum"].isin(secilen_durumlar)]
+
+          st.dataframe(filtered_df, use_container_width=True)
+        else:
+          st.info("Gösterilecek kayıt bulunamadı.")
+
+        # --- AYRI AYRI ÖZET KISIMLAR ---
+        st.divider()
+        col_ozet1, col_ozet2 = st.columns(2)
+        with col_ozet1:
+          st.markdown("### ✅ Tam Eşleşenler")
+          if not sonuc_df.empty:
+            mutabik_df = sonuc_df[sonuc_df["Durum"] == "Eşleşti (Mutabık)"]
+            st.metric("Mutabık Kayıt Sayısı", len(mutabik_df))
+          else:
+            st.metric("Mutabık Kayıt Sayısı", 0)
+
+        with col_ozet2:
+          st.markdown("### ⚠️ Şüpheli Eşleşmeler")
+          if not sonuc_df.empty:
+            supheli_df = sonuc_df[sonuc_df["Durum"] == "Şüpheli Eşleşme"]
+            st.metric("Şüpheli Kayıt Sayısı", len(supheli_df))
+          else:
+            st.metric("Şüpheli Kayıt Sayısı", 0)
+
+        st.divider()
+        st.markdown(
+            "### ❌ Bankada Karşılığı Olmayanlar (Ödemesi Gelmeyenler)"
         )
-    else:
-        filtered_df = res_df[res_df["Durum"].isin(selected_statuses)]
-        st.dataframe(filtered_df, use_container_width=True)
+        if not karsiliksiz_df.empty:
+          st.dataframe(karsiliksiz_df, use_container_width=True)
+        else:
+          st.success("Harika! Bankada karşılığı olmayan eksik kayıt bulunmuyor.")
+
+        # --- EXCEL İNDİRME ---
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+          if not sonuc_df.empty:
+            sonuc_df.to_excel(
+                writer, sheet_name="Ana_Mutabakat_Raporu", index=False
+            )
+          if not karsiliksiz_df.empty:
+            karsiliksiz_df.to_excel(
+                writer, sheet_name="Karsiligi_Olmayanlar", index=False
+            )
+        buffer.seek(0)
+
+        st.download_button(
+            label="📥 Tüm Raporları Excel Olarak İndir",
+            data=buffer,
+            file_name="detayli_mutabakat_raporu.xlsx",
+            mime=(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            ),
+        )
+
+  except Exception as e:
+    st.error(f"Dosya işlenirken bir hata oluştu. Detay: {e}")
+else:
+  st.warning("Lütfen her iki dosyayı da yükleyin.")
